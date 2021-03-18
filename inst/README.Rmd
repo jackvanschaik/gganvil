@@ -1,23 +1,40 @@
 ---
-title: "test_08.Rmd"
-author: "Jack VanSchaik"
-date: "3/18/2021"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(dev.args = list(png = list(type = "cairo")))
 ```
 
-```{r}
+## About
+
+This is an R package for plotting Minecraft worlds (stored in "Anvil" format).
+
+It can also load block data into a data.frame for analysis, and parse NBT files.
+
+## Installation
+
+The package can be installed by running the following R code. This assumes the `devtools`
+package has already been installed. If not, uncomment the first line.
+
+```{r, eval=FALSE}
+#install.packages("devtools)
+devtools::install_github("hrbrmstr/gzmem")
+devtools::install_github("jackvanschaik/gganvil")
+```
+
+The `gzmem` package is needed for in-memory zlib decompression.
+
+The package can then be loaded via
+
+```{r, eval=FALSE}
 library(gganvil)
-library(ggplot2)
-library(dplyr)
-library(reshape2)
 ```
 
+## Examples
 
-## Locate the region of interest
+#### Locate the region of interest
 
 This package currently processes a single world region at a time. A region contains
 a 32 by 32 grid of chunks, where each chunk contains 16 by 16 by (height) number of blocks.
@@ -28,12 +45,17 @@ if you know the X and Z coordinate of the chunk of interest. This can be found
 in game by pressing F3. 
 
 ```{r}
+library(gganvil)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+
 region_file <- get_region_name(-8, 10)
 file_path <- paste0("C:/Users/Jack/Documents/mc_server/world/region/", region_file)
 file_path
 ```
 
-## Get the top block and plot them
+#### Get the top block and plot them
 
 The function `region_top_block` function will process a region file, and get
 the top block at each coordinate, producing a 512 by 512 character matrix of
@@ -44,16 +66,16 @@ map is used to
 
 ```{r}
 top_blocks <- region_top_block(file_path)
-plot_top_blocks(top_blocks) + labs(title = "A Region from My Minecraft Server!")
+plot_top_blocks(top_blocks) + labs(title = "A Region from My Minecraft Server")
 ```
 
-## Do Some Data Analysis
+#### Do some data analysis
 
 We can also get all the block data as a melted data.frame, so we can use familiar
 R tools to do block-level data analysis. The `region_data` function is the workhorse
 for this, it uses a region file path as input.
 
-For me, this data.frame has nearly 20 million rows, so be warned!
+For me, this data.frame has nearly 20 million rows, so be warned.
 
 ```{r}
 my_region_data <- region_data(file_path)
