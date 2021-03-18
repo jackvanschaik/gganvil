@@ -1,11 +1,10 @@
 
 ## About
 
-This is an R package for plotting Minecraft worlds (stored in “Anvil”
-format).
+`gganvil` an R package for plotting and analyzing Minecraft worlds.
 
-It can also load block data into a data.frame for analysis, and parse
-NBT files.
+It currently supports world in 1.16 “Anvil” format, and has a base R NBT
+parser.
 
 ## Installation
 
@@ -31,10 +30,9 @@ library(gganvil)
 
 #### Locate the region of interest
 
-This package currently processes a single world region at a time. A
-region contains a 32 by 32 grid of chunks, where each chunk contains 16
-by 16 by (height) number of blocks. So each region covers a 512 by 512
-block region.
+This package processes one world region at a time. A region contains a
+32 by 32 grid of chunks, where each chunk covers 16 by 16 by area of
+blocks. So each region covers a 512 by 512 block region.
 
 There’s a helper function called `get_region_name` to get the region
 file name if you know the X and Z coordinate of the chunk of interest.
@@ -43,26 +41,7 @@ This can be found in game by pressing F3.
 ``` r
 library(gganvil)
 library(ggplot2)
-```
-
-    ## Warning: package 'ggplot2' was built under R version 4.0.4
-
-``` r
 library(dplyr)
-```
-
-    ## 
-    ## Attaching package: 'dplyr'
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     filter, lag
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     intersect, setdiff, setequal, union
-
-``` r
 library(reshape2)
 
 region_file <- get_region_name(-8, 10)
@@ -78,8 +57,8 @@ The function `region_top_block` function will process a region file, and
 get the top block at each coordinate, producing a 512 by 512 character
 matrix of block names.
 
-The `plot_top_blocks` functions plots the matrix with `ggplot2`. A
-custom built map is used to
+The `plot_top_blocks` functions plots the matrix with `ggplot2`. An
+internal table is used to map block names to RGB colors.
 
 ``` r
 top_blocks <- region_top_block(file_path)
@@ -88,11 +67,12 @@ plot_top_blocks(top_blocks) + labs(title = "A Region from My Minecraft Server")
 
 ![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-#### Do Some Data Analysis
+#### Do some data analysis
 
-We can also get all the block data as a melted data.frame, so we can use
-familiar R tools to do block-level data analysis. The `region_data`
-function is the workhorse for this, it uses a region file path as input.
+We can also get all the block data as data.frame in long format, so we
+can use familiar R tools to do block-level data analysis. The
+`region_data` function is the workhorse for this, it uses a region file
+path as input.
 
 For me, this data.frame has nearly 20 million rows, so be warned.
 
@@ -119,11 +99,7 @@ my_region_data %>%
     summarise(count = length(ore)) %>%
     ungroup ->
     ore_data
-```
 
-    ## `summarise()` regrouping output by 'y' (override with `.groups` argument)
-
-``` r
 ggplot(ore_data, aes(x = y, y = count, group=ore, color=ore)) + 
     geom_line(size=2) + coord_flip() +
     labs(title = "Ore Distribution In Region -1, 0", y = "Y Block Level", 
