@@ -1,0 +1,135 @@
+---
+title: "get_pixel_map.Rmd"
+author: "Jack VanSchaik"
+date: "3/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(imager)
+library(jsonlite)
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+## Load Block Configs
+
+```{r}
+d <- "C:/Users/Jack/AppData/Roaming/.minecraft/versions/1.16.5/assets/minecraft/models/block/"
+jsons <- paste0(d, list.files(d, pattern = "json$"))
+block_confs <- lapply(jsons, read_json)
+```
+## Extract Base Texture For Each Block
+
+```{r}
+base_texture <- lapply(block_confs, function(x) {
+    txt_name <- x$textures[[1]]
+    if (is.null(txt_name)) {
+        return(NA_character_)
+    }
+    else {
+        return(substr(txt_name, 11, nchar(txt_name)))
+    }
+})
+```
+
+## Load PNG files for blocks
+
+
+```{r}
+dir <- "C:/Users/Jack/AppData/Roaming/.minecraft/versions/1.16.5/assets/minecraft/textures/block/"
+
+pngs <- paste0(dir, list.files(dir, pattern = "png$"))
+
+images <- lapply(pngs, load.image)
+```
+
+## Get Average Pixel Color
+
+```{r}
+L <- lapply(images, function(X) {
+    as.data.frame(X) %>%
+        pivot_wider(names_from = cc, values_from = value) ->
+        Y
+    
+    if ("4" %in% names(Y)) {
+        Y <- filter(Y, `4` != 0)
+    }
+    
+    if (!("1" %in% names(Y))) Y$`1` <- 1
+    if (!("2" %in% names(Y))) Y$`2` <- 1
+    if (!("3" %in% names(Y))) Y$`3` <- 1
+    
+    Y %>%
+        select(`1`, `2`, `3`) %>%
+        summarise(
+            R = floor(256 * mean(`1`)),
+            G = floor(256 * mean(`2`)),
+            B = floor(256 * mean(`3`))
+        )
+})
+
+df <- do.call(rbind, L)
+
+df$block_name <- paste0("minecraft:", tools::file_path_sans_ext(basename(pngs)))
+df$base_text <- paste0("block/", tools::file_path_sans_ext(basename(pngs)))
+
+x <- c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F")
+hex <- paste0(rep(x, each=16), rep(x, 16))
+
+df$R[is.nan(df$R)] <- 1
+df$G[is.nan(df$G)] <- 1
+df$B[is.nan(df$B)] <- 1
+
+df$R[df$R == 0] <- 1
+df$G[df$G == 0] <- 1
+df$B[df$B == 0] <- 1
+
+df$r <- hex[df$R]
+df$g <- hex[df$G]
+df$b <- hex[df$B]
+
+df %>%
+    transmute(
+        base_text,
+        rgb = paste0("#", r, g, b)
+    ) ->
+    df_2
+
+df_2
+```
+
+## Combine Block Names With RGB
+
+```{r}
+
+data.frame(
+    block_name = tools::file_path_sans_ext(basename(jsons)),
+    base_text = unlist(base_texture)
+) %>%
+    left_join(df_2, by="base_text") %>%
+    mutate(block_name = paste0("minecraft:", block_name)) %>%
+    mutate(
+        rgb = case_when(
+            block_name  == "minecraft:water" ~ "#0000FF",
+            block_name  == "minecraft:grass_block" ~ "#00FF00",
+            TRUE ~rgb
+        )
+    ) ->
+    color_map
+```
+
+
+## Export
+
+```{r}
+saveRDS(color_map, "color_map.rds")
+```
+
+```{r}
+use_data(color_map, overwrite = TRUE)
+```
+
